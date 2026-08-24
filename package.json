@@ -1,0 +1,32 @@
+{
+  "name": "herdr101",
+  "version": "1.0.0",
+  "description": "An unofficial, hands-on course for Herdr: ordered lessons and quizzes beside a working Herdr terminal simulator. Not affiliated with Herdr.",
+  "homepage": "https://herdr101.run/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/M0H4M3D-D3V/herdr101.git"
+  },
+  "bugs": {
+    "url": "https://github.com/M0H4M3D-D3V/herdr101/issues"
+  },
+  "license": "MIT",
+  "author": "M0H4M3D-D3V",
+  "keywords": [
+    "herdr",
+    "terminal",
+    "multiplexer",
+    "coding-agents",
+    "tutorial",
+    "simulator",
+    "learn-by-doing"
+  ],
+  "private": false,
+  "scripts": {
+    "build": "node build.js",
+    "serve": "npx --yes serve . -l 5173"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,12 @@
+# build output — regenerate with `npm run build`
+dist/
+
+# dependencies
+node_modules/
+
+# editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

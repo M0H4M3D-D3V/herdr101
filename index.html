@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en" data-app="herdr101">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<title>Herdr101 — learn Herdr by doing</title>
+<meta name="description" content="An unofficial, hands-on course for Herdr: twelve ordered lessons and quizzes beside a working Herdr terminal simulator that checks your work. Not affiliated with Herdr.">
+<link rel="canonical" href="https://herdr101.run/">
+<meta name="theme-color" content="#0c0c0b">
+<meta name="color-scheme" content="dark">
+<meta name="author" content="M0H4M3D-D3V">
+
+<!-- Open Graph — used by WhatsApp, Slack, LinkedIn, Discord, Facebook -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Herdr101">
+<meta property="og:url" content="https://herdr101.run/">
+<meta property="og:title" content="Herdr101 — learn Herdr by doing">
+<meta property="og:description" content="Twelve ordered lessons and quizzes beside a working Herdr terminal simulator that checks your work. Unofficial, open source, runs in your browser.">
+<meta property="og:image" content="https://herdr101.run/assets/img/og-cover.png">
+<meta property="og:image:secure_url" content="https://herdr101.run/assets/img/og-cover.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Herdr101: a lesson panel beside a simulated Herdr terminal showing spaces, agents and split panes.">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter/X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Herdr101 — learn Herdr by doing">
+<meta name="twitter:description" content="Twelve ordered lessons and quizzes beside a working Herdr terminal simulator that checks your work. Unofficial, open source.">
+<meta name="twitter:image" content="https://herdr101.run/assets/img/og-cover.png">
+<meta name="twitter:image:alt" content="Herdr101: a lesson panel beside a simulated Herdr terminal.">
+
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<a class="skip" href="#lesson">Skip to lesson</a>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true">
+      <span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+    </span>
+    <span class="brand-name">herdr<span class="brand-101">101</span></span>
+    <span class="brand-sub" title="Not affiliated with Herdr">unofficial</span>
+  </div>
+
+  <button class="btn ghost" id="btn-curriculum" aria-haspopup="dialog"
+          title="Curriculum" aria-label="Curriculum">
+    <span class="kbd-ico" aria-hidden="true">☰</span><span class="lbl">Curriculum</span>
+  </button>
+
+  <div class="progress" role="group" aria-label="Course progress">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <span class="progress-label" id="progress-label">0%</span>
+  </div>
+
+  <div class="topbar-right">
+    <a class="btn ghost" id="btn-github" href="https://github.com/M0H4M3D-D3V/herdr101"
+       target="_blank" rel="noopener" title="Source on GitHub" aria-label="Source on GitHub">
+      <svg class="gh-ico" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+        0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01
+        1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
+        0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09
+        2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65
+        3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+      </svg><span class="lbl">GitHub</span>
+    </a>
+    <a class="btn ghost hide-sm" href="https://herdr.dev/docs/" target="_blank" rel="noopener">Docs ↗</a>
+    <button class="btn ghost" id="btn-tour" title="Show the guided tour" aria-label="Show the guided tour">
+      <span class="kbd-ico" aria-hidden="true">?</span><span class="lbl">Tour</span>
+    </button>
+    <button class="btn ghost" id="btn-keys" title="Keybinding cheat sheet" aria-label="Keybinding cheat sheet">
+      <span class="kbd-ico" aria-hidden="true">⌘</span><span class="lbl">Keys</span>
+    </button>
+    <button class="btn ghost danger" id="btn-reset" title="Reset progress and simulator" aria-label="Reset progress and simulator">
+      <span class="kbd-ico" aria-hidden="true">↺</span><span class="lbl">Reset</span>
+    </button>
+  </div>
+</header>
+
+<div class="viewswitch" role="tablist" aria-label="Mobile view">
+  <button class="vs-btn is-on" data-view="learn" role="tab" aria-selected="true">Learn</button>
+  <button class="vs-btn" data-view="sim" role="tab" aria-selected="false">Terminal</button>
+</div>
+
+<main class="workspace" id="workspace">
+
+  <!-- ══════════════ LEFT: LESSON RAIL ══════════════ -->
+  <section class="rail" id="lesson" data-pane="learn" aria-label="Lesson">
+    <div class="rail-head">
+      <div class="crumb">
+        <span class="crumb-mod" id="crumb-module">Module</span>
+        <span class="crumb-sep">/</span>
+        <span class="crumb-les" id="crumb-lesson">Lesson</span>
+      </div>
+      <div class="rail-nav">
+        <button class="btn tiny" id="btn-prev" aria-label="Previous lesson">← Prev</button>
+        <span class="lesson-count" id="lesson-count">1 / 1</span>
+        <button class="btn tiny primary" id="btn-next" aria-label="Next lesson">Next →</button>
+      </div>
+    </div>
+
+    <div class="rail-scroll" id="rail-scroll">
+      <article class="lesson" id="lesson-body"></article>
+
+      <section class="tasks" id="tasks-block" hidden>
+        <div class="block-head">
+          <h2 class="block-title">Do it in the terminal</h2>
+          <span class="block-meta" id="tasks-meta"></span>
+        </div>
+        <p class="block-note">These check themselves as you work in the simulator on the right.</p>
+        <ol class="task-list" id="task-list"></ol>
+      </section>
+
+      <section class="quiz" id="quiz-block" hidden>
+        <div class="block-head">
+          <h2 class="block-title">Check yourself</h2>
+          <span class="block-meta" id="quiz-meta"></span>
+        </div>
+        <div id="quiz-list"></div>
+      </section>
+
+      <nav class="lesson-foot">
+        <button class="btn" id="btn-prev-2">← Previous</button>
+        <button class="btn primary" id="btn-next-2">Next lesson →</button>
+      </nav>
+    </div>
+  </section>
+
+  <div class="gutter" id="gutter" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
+
+  <!-- ══════════════ RIGHT: SIMULATOR ══════════════ -->
+  <section class="simwrap" data-pane="sim" aria-label="Herdr simulator">
+    <div class="sim-toolbar">
+      <span class="sim-title">herdr <span class="sim-ver">v0.8.2</span></span>
+      <span class="chip" id="chip-session">session: default</span>
+      <span class="chip mode" id="chip-mode">TERMINAL</span>
+      <div class="sim-tools">
+        <button class="btn tiny" id="btn-sim-reset" title="Fresh server, fresh workspace">Restart<span class="lbl"> server</span></button>
+      </div>
+    </div>
+
+    <div class="term" id="term" tabindex="0" role="application"
+         aria-label="Herdr terminal emulator. Click to focus, then type commands.">
+      <div class="herdr-ui">
+        <aside class="side" id="side"></aside>
+        <div class="main">
+          <div class="tabbar" id="tabbar"></div>
+          <div class="grid" id="grid"></div>
+        </div>
+      </div>
+      <div class="statusbar" id="statusbar"></div>
+
+      <div class="term-veil" id="term-veil">
+        <div class="veil-card">
+          <span class="veil-key">click</span> to focus this terminal<span class="veil-sub">it is live — type <code>herdr status</code></span>
+        </div>
+      </div>
+
+      <div class="detached" id="detached" hidden>
+        <div class="detach-card">
+          <p class="detach-h">[detached from session <b>default</b>]</p>
+          <p class="detach-p">The server is still running. Panes, shells and agents keep working.</p>
+          <p class="detach-cmd">$ <span class="cursor-blink">herdr</span></p>
+          <button class="btn primary" id="btn-attach">Reattach (herdr)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sim-hint" id="sim-hint">
+      <span><b>ctrl+b</b> then a key = prefix action</span>
+      <span><code>help</code> lists shell commands · <code>herdr --help</code> lists the CLI</span>
+      <span class="unoff">Herdr101 is unofficial and not affiliated with Herdr · the real Herdr lives at
+        <a href="https://herdr.dev/" target="_blank" rel="noopener">herdr.dev</a></span>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════════ CURRICULUM DRAWER ══════════════ -->
+<div class="drawer-veil" id="drawer-veil" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-label="Curriculum" hidden>
+  <div class="drawer-head">
+    <h2>Curriculum <span class="unoff-tag">unofficial</span></h2>
+    <button class="btn tiny ghost" id="btn-drawer-close" aria-label="Close">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+
+<!-- ══════════════ KEYS SHEET ══════════════ -->
+<div class="drawer-veil" id="keys-veil" hidden></div>
+<aside class="drawer right" id="keys-sheet" role="dialog" aria-label="Keybindings" hidden>
+  <div class="drawer-head">
+    <h2>Keybindings</h2>
+    <button class="btn tiny ghost" id="btn-keys-close" aria-label="Close">✕</button>
+  </div>
+  <div class="drawer-body" id="keys-body"></div>
+</aside>
+
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+
+<script src="assets/js/vfs.js"></script>
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/shell.js"></script>
+<script src="assets/js/sim.js"></script>
+<script src="assets/js/tour.js"></script>
+<script src="assets/js/curriculum.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
