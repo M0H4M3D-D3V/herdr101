@@ -1,8 +1,12 @@
-/* build.js — inline the CSS and JS into one self-contained page.
-   node build.js
-     → dist/index.html      a standalone file you can open or host anywhere
-     → dist/artifact.html   the same page as an Artifact body (no <html>/<head>)
-*/
+/* build.js — inline the CSS and JS into a single self-contained page.
+ *
+ *   node build.js  →  dist/index.html
+ *
+ * The result is one file you can host anywhere. It still links the two images
+ * in assets/img/ (favicon and touch icon), so copy that directory alongside it.
+ * Serving the repository root directly works too — the build is only for
+ * deployments that prefer a single file.
+ */
 const fs = require('fs');
 const path = require('path');
 
@@ -27,19 +31,5 @@ html = html
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist/index.html'), html);
 
-/* artifact form: page content only — the host supplies the document skeleton */
-const head = html.slice(html.indexOf('<head>') + 6, html.indexOf('</head>'));
-const body = html.slice(html.indexOf('<body>') + 6, html.lastIndexOf('</body>'));
-const keep = head.split('\n')
-  .filter(l => /<title>|fonts\.googleapis|fonts\.gstatic|<style>|<\/style>/.test(l) || l.includes('--ground'))
-  .join('\n');
-const styleBlock = head.slice(head.indexOf('<style>'), head.indexOf('</style>') + 8);
-const titleTag = head.match(/<title>[^<]*<\/title>/)[0];
-const fontLink = head.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis[^>]*>/)[0];
-
-fs.writeFileSync(path.join(root, 'dist/artifact.html'),
-  titleTag + '\n' + fontLink + '\n' + styleBlock + '\n' + body);
-
 const kb = (s) => Math.round(s.length / 1024) + ' KB';
-console.log('dist/index.html    ' + kb(html));
-console.log('dist/artifact.html ' + kb(titleTag + styleBlock + body));
+console.log('dist/index.html  ' + kb(html));

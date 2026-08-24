@@ -58,7 +58,7 @@
             code('inside a herdr pane', [
               '$ herdr status',
               'server      running (pid 4821, uptime 12s)',
-              'protocol    v3  ·  socket ~/.config/herdr/herdr.sock',
+              'socket      ~/.config/herdr/herdr.sock',
               'session     default  (attached)',
               'workspaces  1   panes  1   agents  0'
             ], 'herdr status'),
@@ -544,7 +544,7 @@
             code('updating without killing anything', [
               '$ herdr update --handoff',
               'live handoff: moving running panes to the new server…',
-              '✓ updated to 0.8.3 — processes stayed alive'
+              '✓ updated — the running panes stayed alive'
             ], 'herdr update --handoff'),
 
           tasks: [

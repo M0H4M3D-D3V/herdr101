@@ -311,7 +311,11 @@
     if (!sub) {
       if (p.f.help) return this.herdrHelp(pane);
       if (p.f['default-config']) return this.defaultConfig(pane);
-      if (p.f.version) return this.out(pane, 'herdr 0.8.2');
+      if (p.f.version) {
+        this.out(pane, 'herdr101 simulator — this models no specific Herdr release', 'o-warn');
+        this.out(pane, 'run `herdr --version` on a real install for the actual version', 'o-dim');
+        return;
+      }
       this.out(pane, 'already attached to session ' + e.sessionName, 'o-dim');
       this.out(pane, '(running herdr from inside herdr attaches to the running server)', 'o-dim');
       return;
@@ -347,7 +351,7 @@
       ['herdr plugin list', 'installed plugins'],
       ['herdr --default-config', 'print a starter config.toml']
     ];
-    this.out(pane, 'herdr 0.8.2 — the runtime your coding agents live on', 'o-head');
+    this.out(pane, 'herdr — the runtime your coding agents live on  (simulated)', 'o-head');
     this.out(pane, '');
     rows.forEach(r => {
       this.out(pane, '  ' + (r[1] ? pad(r[0], 44) + r[1] : r[0]), r[1] ? 'o-dim' : 'o-dim');
@@ -361,7 +365,7 @@
     const agents = e.agents();
     const up = Math.max(1, Math.round((Date.now() - e.startedAt) / 1000));
     this.out(pane, 'server      running (pid 4821, uptime ' + up + 's)', 'o-ok');
-    this.out(pane, 'protocol    v3  ·  socket ~/.config/herdr/herdr.sock', 'o-dim');
+    this.out(pane, 'socket      ~/.config/herdr/herdr.sock', 'o-dim');
     this.out(pane, 'session     ' + e.sessionName + (e.attached ? '  (attached)' : '  (detached)'));
     this.out(pane, 'workspaces  ' + e.workspaces.length + '   panes  ' + e.allPanes().length + '   agents  ' + agents.length);
     if (agents.length) {
@@ -603,7 +607,7 @@
       return;
     }
     if (verb === 'info') {
-      this.out(pane, 'version   0.8.2');
+      this.out(pane, 'version   simulated — no specific Herdr release is modelled', 'o-warn');
       this.out(pane, 'protocol  v3');
       this.out(pane, 'socket    ~/.config/herdr/herdr.sock', 'o-dim');
       this.out(pane, 'logs      ~/.config/herdr/herdr-server.log', 'o-dim');
@@ -616,7 +620,6 @@
     if (rest[0] !== 'schema') return this.out(pane, 'herdr api schema [--json]', 'o-dim');
     if (f.json) {
       this.out(pane, '{');
-      this.out(pane, '  "protocol": 3,', 'o-dim');
       this.out(pane, '  "transport": "newline-delimited JSON over a local socket",', 'o-dim');
       this.out(pane, '  "methods": ["ping","workspace.list","tab.create","pane.split",', 'o-dim');
       this.out(pane, '              "pane.read","pane.send","pane.report_agent",', 'o-dim');
@@ -624,7 +627,7 @@
       this.out(pane, '}');
       return;
     }
-    this.out(pane, 'herdr socket API — protocol v3', 'o-head');
+    this.out(pane, 'herdr socket API  (simulated surface)', 'o-head');
     this.out(pane, 'request   {"id":"req_1","method":"ping","params":{}}', 'o-acc');
     this.out(pane, 'response  {"id":"req_1","result":{"type":"pong"}}', 'o-acc');
     this.out(pane, '');
@@ -650,10 +653,10 @@
   Shell.prototype.hUpdate = function (pane, rest, f) {
     if (f.handoff) {
       this.out(pane, 'live handoff: moving running panes to the new server…', 'o-warn');
-      this.e.later(() => this.out(pane, '✓ updated to 0.8.3 — processes stayed alive', 'o-ok'), 1400);
+      this.e.later(() => this.out(pane, '✓ updated — the running panes stayed alive', 'o-ok'), 1400);
       return;
     }
-    this.out(pane, 'already on the latest version (0.8.2)', 'o-dim');
+    this.out(pane, 'this simulator does not model releases or updates', 'o-warn');
     this.out(pane, 'tip: herdr update --handoff keeps running panes alive across the swap', 'o-dim');
   };
 

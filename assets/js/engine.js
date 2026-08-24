@@ -376,7 +376,7 @@
       this.write(pane, ' ▝▜█████▛▘', 'o-logo');
       this.write(pane, '   ▘▘ ▝▝', 'o-logo');
       this.write(pane, '');
-      this.write(pane, ' ' + kind.label + ' v2.1.198', 'o-head');
+      this.write(pane, ' ' + kind.label, 'o-head');
     } else {
       this.write(pane, ' ' + kind.label, 'o-head');
     }
