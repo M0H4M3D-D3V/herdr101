@@ -18,7 +18,7 @@
     this.el = null;
     this.steps = [
       { target: '#lesson-body', title: 'The lesson',
-        text: 'Twelve lessons in order, built from the Herdr docs — what it is, panes and tabs, spaces, agents, detaching, then the CLI and config.',
+        text: 'Thirteen lessons in order, built from the Herdr docs — what it is, panes and tabs, spaces, agents, detaching, the CLI and config, and finally handing the controls to the agent itself.',
         view: 'learn' },
       { target: '#tasks-block', title: 'Do it, do not just read it',
         text: 'Each lesson asks you to run something. The simulator watches what you actually do and ticks these off itself — you cannot click your way past them.',
@@ -39,10 +39,10 @@
         text: 'Press ctrl+b then v to split right, - to split down, c for a tab, w for spaces, q to detach. The mode indicator here tells you which mode you are in.',
         view: 'sim' },
       { target: '#btn-curriculum', title: 'Jump around',
-        text: 'Curriculum lists all twelve lessons with your progress against each, so you can skip ahead or go back to one you want to redo.',
+        text: 'Curriculum lists all thirteen lessons with your progress against each, so you can skip ahead or go back to one you want to redo.',
         view: 'learn' },
       { target: '.progress', title: 'Your progress',
-        text: 'This fills as you finish tasks and answer quiz questions — 86 of them across the course. It is saved in this browser, so you can close the tab and come back.',
+        text: 'This fills as you finish tasks and answer quiz questions — 97 of them across the course. It is saved in this browser, so you can close the tab and come back.',
         view: 'learn' },
       { target: '.topbar-right', title: 'And the tools up here',
         text: 'Keys is the full keybinding and CLI cheat sheet. Docs opens the real herdr.dev. Tour replays this walkthrough. Reset clears your progress and restarts the simulated server.',

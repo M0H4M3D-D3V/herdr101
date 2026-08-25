@@ -640,7 +640,7 @@
 
             '<h2>Three layers</h2>' +
             table(['Layer', 'Use it for'], [
-              ['<strong>Agent skill</strong>', 'Teaching a coding agent to drive Herdr from inside its own pane'],
+              ['<strong>Agent skill</strong>', 'Teaching a coding agent to drive Herdr from inside its own pane \u2014 <code>npx skills add herdrdev/herdr --skill herdr -g</code>, covered in lesson 13'],
               ['<strong>CLI wrappers</strong>', 'Shell scripts, orchestration, debugging — start here'],
               ['<strong>Raw socket API</strong>', 'Custom tools that need request/response control or long-lived event subscriptions']
             ]) +
@@ -771,6 +771,104 @@
             { q: 'A plugin is:',
               options: ['A Rust crate compiled into the binary', 'A local executable plus a manifest, hooked to events', 'A config section', 'A hosted service'],
               answer: 1, why: 'Executable + manifest + event hooks, optionally published to the marketplace.' }
+          ]
+        },
+
+        {
+          id: 'agent-skill',
+          title: 'Let the agent drive Herdr',
+          body:
+            '<p class="eyebrow">Lesson 13 \u00b7 Automation</p>' +
+            '<h1>Let the agent drive Herdr</h1>' +
+            '<p class="lede">The last step is handing the controls over. Install the Herdr agent skill and your coding agent can inspect the workspace, open panes, run things and wait on them \u2014 without taking your screen away from you.</p>' +
+
+            '<h2>Install it once</h2>' +
+            code('installing the agent skill', [
+              '$ npx skills add herdrdev/herdr --skill herdr -g',
+              '# -g installs it globally; omit it for this project only'
+            ]) +
+            '<p>Then start your agent inside a Herdr-managed pane, which sets the environment the skill needs:</p>' +
+            code('starting a herdr-aware agent', ['$ herdrclaude'], 'herdrclaude') +
+
+            '<h2>The guard comes first</h2>' +
+            '<p>Before the skill issues a single control command it checks that it is actually running inside Herdr. If the check fails it says so and stops \u2014 an agent outside Herdr has no business driving someone else\'s session.</p>' +
+            code('the guard', ['$ test "${HERDR_ENV:-}" = 1'], 'test "${HERDR_ENV:-}" = 1') +
+            '<p>Herdr injects the caller\'s context into every managed pane, which is how the agent knows where it already is:</p>' +
+            code('the injected context', [
+              '$ env',
+              'HERDR_ENV=1',
+              'HERDR_WORKSPACE_ID=w1',
+              'HERDR_TAB_ID=w1:t1',
+              'HERDR_PANE_ID=w1:p1'
+            ], 'env') +
+
+            '<h2>What you would actually ask for</h2>' +
+            note('A real request', '<p>\u201cUse the Herdr skill. Inspect the current workspace, split a pane to the right <em>without changing my focus</em>, run the tests in that pane, wait for them to finish, and summarise the result.\u201d</p>') +
+            '<p>Every clause maps to a command. Run them yourself and you will know exactly what the agent is doing on your behalf:</p>' +
+            code('the same workflow, by hand', [
+              '# 1. where am I, and what is around me?',
+              '$ herdr pane current --current',
+              '$ herdr pane list',
+              '',
+              '# 2. a sibling pane, same directory, focus left alone',
+              '$ herdr pane split --current --direction right --cwd "$PWD" --no-focus',
+              '',
+              '# 3. run the tests in the pane that came back',
+              '$ herdr pane run w1:p2 "npm test"',
+              '',
+              '# 4. wait for them rather than guessing',
+              '$ herdr pane wait-output w1:p2 --match "passed" --timeout 120000',
+              '',
+              '# 5. read the result back as text',
+              '$ herdr pane read w1:p2 --source recent-unwrapped --lines 40'
+            ], 'herdr pane split --current --direction right --cwd "$PWD" --no-focus') +
+
+            '<h2>--no-focus is the whole etiquette</h2>' +
+            '<p>An agent that steals your cursor mid-thought is worse than no agent. <code>--no-focus</code> works on <code>pane split</code> and <code>workspace create</code>, and the skill\'s own rule is to use it for background work unless you asked to be moved.</p>' +
+            note('Two more rules the skill follows', '<p>Split a wide pane <strong>right</strong> and a tall one <strong>down</strong>, and never close panes, tabs or sessions it did not create. Read IDs out of the responses rather than guessing them from the sidebar.</p>') +
+
+            '<h2>Handing work to a second agent</h2>' +
+            '<p>The same primitives start a colleague in a sibling pane and wait for it properly:</p>' +
+            code('delegating', [
+              '$ herdr agent start reviewer --kind codex --pane w1:p2',
+              'started codex as "reviewer" in w1:p2',
+              '$ herdr agent prompt reviewer "Review the current diff" --wait --timeout 120000',
+              '\u2713 reviewer settled: done',
+              '$ herdr agent read reviewer --source recent-unwrapped --lines 120'
+            ]) +
+            '<p>Names must match <code>[a-z][a-z0-9_-]{0,31}</code> and be unique among live agents. <code>--wait</code> settles on the first <code>idle</code>, <code>done</code> or <code>blocked</code>; use <code>herdr agent wait &lt;name&gt; --until blocked</code> only when you want a specific state. A prompt aimed at an agent already sitting at an approval is refused with <code>agent_blocked</code> rather than blindly answering it.</p>' +
+            note('Reading does not mark it seen', '<p>Remember the <code>done</code> / <code>idle</code> distinction from lesson 07: focusing a pane marks it seen, but a CLI read does not. That is deliberate \u2014 an agent inspecting your panes should not quietly clear your notifications.</p>', true),
+
+          tasks: [
+            { id: 't1', text: 'Check the guard: <code>test "${HERDR_ENV:-}" = 1</code>.', hint: 'it should exit 0 inside a pane',
+              check: (ev) => ev.type === 'cmd' && ev.cmd === 'test' },
+            { id: 't2', text: 'See what Herdr injected: run <code>env</code>.', hint: 'HERDR_PANE_ID is how the agent knows where it is',
+              check: (ev) => ev.type === 'cmd' && (ev.cmd === 'env' || ev.cmd === 'printenv') },
+            { id: 't3', text: 'Split a sibling pane <strong>without moving your focus</strong>: <code>herdr pane split --current --direction right --cwd "$PWD" --no-focus</code>.', hint: 'the border stays on the pane you are typing in',
+              check: (ev) => ev.type === 'pane.split' && ev.focus === false },
+            { id: 't4', text: 'Run the tests there: <code>herdr pane run &lt;new-pane&gt; "npm test"</code>.', hint: 'the split printed the pane id',
+              check: (ev) => ev.type === 'herdr.cmd' && ev.sub === 'pane' && ev.rest[1] === 'run' },
+            { id: 't5', text: 'Wait for them: <code>herdr pane wait-output &lt;new-pane&gt; --match "passed"</code>.', hint: 'it searches what is already on screen first',
+              check: (ev) => ev.type === 'herdr.cmd' && ev.sub === 'pane' && ev.rest[1] === 'wait-output' },
+            { id: 't6', text: 'Start a named colleague: <code>herdr agent start reviewer --kind codex --pane &lt;new-pane&gt;</code>.', hint: 'the pane must be at a shell prompt',
+              check: (ev) => ev.type === 'agent.start' && ev.agent && ev.agent.name === 'reviewer' }
+          ],
+          quiz: [
+            { q: 'What does the skill check before issuing any Herdr command?',
+              options: ['That <code>herdr</code> is on PATH', 'That <code>HERDR_ENV=1</code> — i.e. it is running inside a Herdr-managed pane', 'That the user approved it in config.toml', 'That a session named default exists'],
+              answer: 1, why: 'If the check fails the skill says it is not running inside Herdr and stops, rather than driving a session it does not belong to.' },
+            { q: 'Which flag keeps your cursor where it is when an agent opens a pane?',
+              options: ['<code>--background</code>', '<code>--detach</code>', '<code>--no-focus</code>', '<code>--quiet</code>'],
+              answer: 2, why: '<code>--no-focus</code> works on <code>pane split</code> and <code>workspace create</code>. The skill uses it for background work by default.' },
+            { q: 'Where should an agent get the ID of a pane it just created?',
+              options: ['From the sidebar order', 'By incrementing the last pane number', 'From the response — <code>.result.pane.pane_id</code>', 'From <code>HERDR_PANE_ID</code>'],
+              answer: 2, why: 'Control commands return JSON; the skill\'s rule is to parse IDs from responses rather than predict them. <code>HERDR_PANE_ID</code> is the calling pane, not the new one.' },
+            { q: '<code>herdr agent prompt</code> is aimed at an agent sitting at an approval dialog. What happens?',
+              options: ['The text is sent and answers the dialog', 'It is refused with <code>agent_blocked</code>', 'It waits until the dialog clears, then sends', 'The dialog is dismissed and the prompt replaces it'],
+              answer: 1, why: 'It refuses before sending anything. Inspect the blocked UI and ask the user — an agent should not answer an approval on your behalf.' },
+            { q: 'You run <code>herdr agent read</code> on an agent whose state is <code>done</code>. What happens to that state?',
+              options: ['It becomes <code>idle</code>, because you read it', 'It stays <code>done</code> — a CLI read does not mark it seen', 'It becomes <code>unknown</code>', 'It becomes <code>working</code>'],
+              answer: 1, why: 'Only focusing the tab, or targeting the pane or agent with a focus command, marks it seen. Reads deliberately do not, so an inspecting agent cannot clear your notifications.' }
           ]
         }
       ]

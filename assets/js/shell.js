@@ -45,6 +45,38 @@
 
   function pad(s, n) { s = String(s); return s + ' '.repeat(Math.max(1, n - s.length)); }
 
+  /* the snapshot sources herdr can read a pane from */
+  const READ_SOURCES = ['visible', 'recent', 'recent-unwrapped', 'detection'];
+
+  /* $VAR, ${VAR} and ${VAR:-fallback}; single quotes suppress expansion */
+  function expand(line, env) {
+    let out = '', qs = false, qd = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === "'" && !qd) { qs = !qs; out += c; continue; }
+      if (c === '"' && !qs) { qd = !qd; out += c; continue; }
+      if (c !== '$' || qs) { out += c; continue; }
+
+      const rest = line.slice(i + 1);
+      let m = rest.match(/^\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}/);
+      if (m) {
+        const v = env[m[1]];
+        out += (v == null || v === '') ? (m[2] == null ? '' : m[2]) : v;
+        i += m[0].length;
+        continue;
+      }
+      m = rest.match(/^([A-Za-z_][A-Za-z0-9_]*)/);
+      if (m) {
+        const v = env[m[1]];
+        out += v == null ? '' : v;
+        i += m[0].length;
+        continue;
+      }
+      out += c;
+    }
+    return out;
+  }
+
   /* ============================================================
      Shell
      ============================================================ */
@@ -86,7 +118,7 @@
       return;
     }
 
-    const argv = tokenize(line);
+    const argv = tokenize(expand(line, this.env(pane)));
     const cmd = argv[0];
     e.emit('cmd', { pane: pane, line: line, argv: argv, cmd: cmd });
 
@@ -96,6 +128,16 @@
     if (typeof fn === 'function') return fn.call(this, pane, argv.slice(1), line);
     e.write(pane, cmd + ': command not found', 'o-err');
     e.write(pane, "try 'help'", 'o-dim');
+  };
+
+  /* what $VAR resolves against: herdr's injected context plus the usual shell vars */
+  Shell.prototype.env = function (pane) {
+    return Object.assign({
+      PWD: pane.cwd,
+      HOME: V.HOME,
+      USER: 'dev',
+      SHELL: '/bin/bash'
+    }, this.e.paneEnv(pane));
   };
 
   Shell.prototype.abs = function (pane, p) { return V.normalize(p, pane.cwd); };
@@ -119,13 +161,14 @@
       ['git <status|log|branch>', 'a small git stub'],
       ['npm <test|run dev>', 'a small npm stub'],
       ['pytest / cargo test', 'run the project test stub'],
+      ['env / printenv', 'the herdr context injected into this pane'],
       ['clear', 'clear this pane'],
       ['exit', 'close this pane']
     ];
     this.out(pane, 'shell commands', 'o-head');
     rows.forEach(r => this.out(pane, '  ' + pad(r[0], 24) + r[1], 'o-dim'));
     this.out(pane, '');
-    this.out(pane, 'agents: ' + Object.keys(KINDS).join(', '), 'o-dim');
+    this.out(pane, 'agents: ' + Object.keys(KINDS).join(', ') + '  ·  herdrclaude', 'o-dim');
     this.out(pane, "herdr CLI: 'herdr --help'", 'o-dim');
   };
 
@@ -230,6 +273,40 @@
       return;
     }
     this.out(pane, args.join(' '));
+  };
+
+  /* Herdr injects the caller's context into every managed pane. The agent skill
+     checks HERDR_ENV before issuing a single control command. */
+  Shell.prototype.cmd_env = function (pane) {
+    const env = this.env(pane);
+    Object.keys(env).forEach(k => this.out(pane, k + '=' + env[k]));
+  };
+  Shell.prototype.cmd_printenv = function (pane, args) {
+    if (!args.length) return this.cmd_env(pane);
+    const v = this.env(pane)[args[0]];
+    this.out(pane, v == null ? '' : v, v == null ? 'o-dim' : '');
+  };
+
+  /* the skill's guard, `test "${HERDR_ENV:-}" = 1`, works because the line
+     was expanded before it got here */
+  Shell.prototype.cmd_test = function (pane, args) {
+    let ok = false;
+    if (args.length === 3 && args[1] === '=')  ok = args[0] === args[2];
+    else if (args.length === 3 && args[1] === '!=') ok = args[0] !== args[2];
+    else if (args.length === 2 && args[0] === '-n') ok = !!args[1];
+    else if (args.length === 2 && args[0] === '-z') ok = !args[1];
+    else if (args.length === 1) ok = !!args[0];
+    this.out(pane, ok ? 'exit 0' : 'exit 1', ok ? 'o-ok' : 'o-err');
+    if (args.indexOf('1') >= 0 || args.indexOf('') >= 0) {
+      this.out(pane, ok ? '  → inside a herdr-managed pane; the skill may proceed'
+                        : '  → not inside herdr; the skill must stop here', 'o-dim');
+    }
+  };
+
+  /* herdrclaude: start Claude in a herdr-managed pane with HERDR_ENV set */
+  Shell.prototype.cmd_herdrclaude = function (pane) {
+    this.out(pane, 'HERDR_ENV=1  ' + this.e.paneEnv(pane).HERDR_PANE_ID, 'o-dim');
+    this.launchAgent(pane, 'claude', []);
   };
 
   Shell.prototype.cmd_clear = function (pane) { this.e.clearPane(pane); };
@@ -394,8 +471,10 @@
       const cwd = f.cwd ? V.normalize(f.cwd, pane.cwd) : pane.cwd;
       if (!e.fs.isDir(cwd)) return this.out(pane, 'herdr: no such directory: ' + f.cwd, 'o-err');
       const ws = e.createWorkspace({ cwd: cwd, name: f.label || f.name || V.basename(cwd) });
-      e.focusWorkspace(ws.id);
-      this.out(pane, 'created ' + ws.id + '  ' + ws.name + '  ' + V.pretty(cwd), 'o-ok');
+      if (!f['no-focus']) e.focusWorkspace(ws.id);
+      this.out(pane, 'created ' + ws.id + '  ' + ws.name + '  ' + V.pretty(cwd) +
+        (f['no-focus'] ? '  (focus unchanged)' : ''), 'o-ok');
+      this.out(pane, '.result.workspace / .result.tab / .result.root_pane returned', 'o-dim');
       return;
     }
     if (verb === 'focus') {
@@ -444,10 +523,58 @@
       return;
     }
     if (verb === 'split') {
-      const target = rest[1] || pane.gid;
+      // `--current` targets the calling pane; `--no-focus` leaves the user put
+      const target = f.current ? pane.gid : (rest[1] || pane.gid);
       const dir = f.direction || f.dir || 'right';
-      const r = e.split(target, dir === 'down' || dir === 'below' ? 'down' : 'right');
-      return this.out(pane, r.err || ('split ' + target + ' ' + dir + ' → ' + r.pane.gid), r.err ? 'o-err' : 'o-ok');
+      const cwd = f.cwd ? V.normalize(f.cwd, pane.cwd) : null;
+      if (cwd && !e.fs.isDir(cwd)) return this.out(pane, 'herdr: no such directory: ' + f.cwd, 'o-err');
+      const r = e.split(target, dir === 'down' || dir === 'below' ? 'down' : 'right',
+                        { focus: !f['no-focus'], cwd: cwd });
+      if (r.err) return this.out(pane, r.err, 'o-err');
+      this.out(pane, 'split ' + target + ' ' + dir + ' → ' + r.pane.gid +
+        (f['no-focus'] ? '  (focus unchanged)' : ''), 'o-ok');
+      this.out(pane, '.result.pane.pane_id = ' + r.pane.gid, 'o-dim');
+      return;
+    }
+
+    if (verb === 'current') {
+      const t = f.current ? pane : (e.resolve(rest[1]) || pane);
+      const loc = e.tabOfPane(t);
+      this.out(pane, 'pane_id      ' + t.gid);
+      this.out(pane, 'workspace_id ' + t.wsId, 'o-dim');
+      this.out(pane, 'tab_id       ' + (loc ? loc.tab.id : ''), 'o-dim');
+      this.out(pane, 'cwd          ' + V.pretty(t.cwd), 'o-dim');
+      return;
+    }
+
+    if (verb === 'layout') {
+      const t = e.resolve(f.pane || rest[1]) || pane;
+      const loc = e.tabOfPane(t);
+      const n = loc ? loc.tab.panes.length : 1;
+      this.out(pane, t.gid + ' is 1 of ' + n + ' pane' + (n === 1 ? '' : 's') + ' in ' + (loc ? loc.tab.id : ''));
+      this.out(pane, 'wide panes split right, tall or narrow panes split down', 'o-dim');
+      return;
+    }
+
+    if (verb === 'wait-output') {
+      const target = f.current ? pane : e.resolve(rest[1]);
+      if (!target) return this.out(pane, 'herdr: no such pane: ' + rest[1], 'o-err');
+      const needle = f.match || f.regex;
+      if (!needle) return this.out(pane, 'herdr pane wait-output <target> --match <text>', 'o-err');
+      const rx = f.regex ? new RegExp(f.regex) : null;
+      const hit = () => target.lines.some(l => rx ? rx.test(l.text) : l.text.indexOf(needle) >= 0);
+      const started = Date.now();
+      const limit = parseInt(f.timeout || 30000, 10);
+      this.out(pane, 'waiting on ' + target.gid + ' for ' + (f.regex ? '/' + f.regex + '/' : '"' + needle + '"') + ' …', 'o-warn');
+      const poll = () => {
+        if (hit()) {
+          return this.out(pane, '✓ matched after ' + Math.round((Date.now() - started) / 1000) + 's', 'o-ok');
+        }
+        if (Date.now() - started > limit) return this.out(pane, 'timed out after ' + limit + 'ms', 'o-err');
+        e.later(poll, 400);
+      };
+      poll();                       // searches the existing snapshot first, as herdr does
+      return;
     }
     if (verb === 'focus') { const r = e.focusPane(e.resolve(rest[1]) ? e.resolve(rest[1]).gid : rest[1]); return this.out(pane, r.err || 'focused ' + rest[1], r.err ? 'o-err' : 'o-ok'); }
     if (verb === 'close') { const r = e.closePane(rest[1]); return this.out(pane, r.err || 'closed ' + rest[1], r.err ? 'o-err' : 'o-ok'); }
@@ -458,6 +585,9 @@
       if (!target) return this.out(pane, 'herdr: no such pane: ' + rest[1], 'o-err');
       const n = parseInt(f.lines || 20, 10);
       const src = f.source || 'recent';
+      if (READ_SOURCES.indexOf(src) < 0) {
+        return this.out(pane, 'herdr: --source must be one of ' + READ_SOURCES.join(', '), 'o-err');
+      }
       this.out(pane, '── ' + target.gid + ' (' + src + ', last ' + n + ') ──', 'o-dim');
       target.lines.slice(-n).forEach(l => this.out(pane, '  ' + l.text, l.cls || 'o-dim'));
       this.out(pane, '── end ──', 'o-dim');
@@ -484,7 +614,7 @@
       e.setAgentState(target, f.state || 'working', f.message || target.agent.message);
       return this.out(pane, 'reported ' + target.gid + ' → ' + (f.state || 'working'), 'o-ok');
     }
-    this.out(pane, 'herdr pane <list|split|focus|read|run|send|rename|swap|close|report-agent>', 'o-dim');
+    this.out(pane, 'herdr pane <list|current|layout|split|focus|read|run|send|wait-output|rename|swap|close|report-agent>', 'o-dim');
   };
 
   /* ---------- agent ---------- */
@@ -499,21 +629,54 @@
       return;
     }
     if (verb === 'start') {
-      const target = e.resolve(rest[1]);
-      const kind = rest[2] || 'claude';
-      if (!target) return this.out(pane, 'herdr: no such pane: ' + rest[1], 'o-err');
-      const r = e.startAgent(target, kind, { prompt: f.prompt, name: f.name });
-      return this.out(pane, r.err || ('started ' + kind + ' in ' + target.gid), r.err ? 'o-err' : 'o-ok');
+      // herdr agent start <name> --kind <kind> --pane <pane-id>
+      const name = rest[1];
+      const kind = f.kind || rest[2] || 'claude';
+      const target = f.current ? pane : e.resolve(f.pane || rest[3]);
+      if (!name) return this.out(pane, 'herdr agent start <name> --kind <kind> --pane <pane-id>', 'o-err');
+      if (!target) return this.out(pane, 'herdr: no such pane: ' + (f.pane || '(none given)'), 'o-err');
+      if (target.agent) return this.out(pane, 'agent_not_ready: ' + target.gid + ' already runs ' + target.agent.label, 'o-err');
+      const r = e.startAgent(target, kind, { name: name, prompt: f.prompt });
+      if (r.err) return this.out(pane, r.err, 'o-err');
+      this.out(pane, 'started ' + kind + ' as "' + name + '" in ' + target.gid, 'o-ok');
+      this.out(pane, 'agent start returns once herdr sees the agent ready for input', 'o-dim');
+      return;
     }
     if (verb === 'prompt') {
       const target = e.resolve(rest[1]);
       if (!target || !target.agent) return this.out(pane, 'herdr: no agent at ' + rest[1], 'o-err');
+      if (target.pending) {
+        return this.out(pane, 'agent_blocked: ' + rest[1] + ' waits at an approval — inspect it before answering', 'o-err');
+      }
       const text = rest.slice(2).join(' ') || f.text || '';
       e.write(target, '> ' + text, 'o-acc');
       e.bumpCtx(target, 5);
       e.setAgentState(target, 'working', text.slice(0, 46));
-      e.later(() => { if (target.agent) { e.write(target, '· done', 'o-dim'); e.setAgentState(target, 'done', 'replied'); } }, 2400);
-      return this.out(pane, 'prompted ' + target.gid, 'o-ok');
+      e.later(() => {
+        if (target.agent) { e.write(target, '· done', 'o-dim'); e.setAgentState(target, 'done', 'replied'); }
+      }, 2400);
+      this.out(pane, 'prompted ' + rest[1], 'o-ok');
+
+      if (f.wait) {
+        // --wait settles on the first idle / done / blocked, per the agent skill
+        const started = Date.now();
+        const limit = parseInt(f.timeout || 120000, 10);
+        this.out(pane, 'waiting for a settled state …', 'o-warn');
+        const poll = () => {
+          if (!target.agent) return this.out(pane, 'agent exited', 'o-dim');
+          const st = target.agent.state;
+          if (st === 'idle' || st === 'done' || st === 'blocked') {
+            this.out(pane, '✓ ' + rest[1] + ' settled: ' + st +
+              ' after ' + Math.round((Date.now() - started) / 1000) + 's', 'o-ok');
+            e.emit('agent.waited', { pane: target, until: st });
+            return;
+          }
+          if (Date.now() - started > limit) return this.out(pane, 'timed out after ' + limit + 'ms', 'o-err');
+          e.later(poll, 400);
+        };
+        e.later(poll, 400);
+      }
+      return;
     }
     if (verb === 'wait') {
       const target = e.resolve(rest[1]);
@@ -534,6 +697,45 @@
       poll();
       return;
     }
+    if (verb === 'get') {
+      const target = e.resolve(rest[1]);
+      if (!target || !target.agent) return this.out(pane, 'herdr: no agent at ' + rest[1], 'o-err');
+      const a = target.agent;
+      this.out(pane, 'name    ' + a.name);
+      this.out(pane, 'kind    ' + a.kind, 'o-dim');
+      this.out(pane, 'pane    ' + target.gid, 'o-dim');
+      this.out(pane, 'state   ' + ICON[a.state] + ' ' + a.state, 's-' + a.state);
+      this.out(pane, 'message ' + a.message, 'o-dim');
+      return;
+    }
+
+    if (verb === 'read') {
+      const target = e.resolve(rest[1]);
+      if (!target || !target.agent) return this.out(pane, 'herdr: no agent at ' + rest[1], 'o-err');
+      const n = parseInt(f.lines || 20, 10);
+      const src = f.source || 'recent-unwrapped';
+      if (READ_SOURCES.indexOf(src) < 0) {
+        return this.out(pane, 'herdr: --source must be one of ' + READ_SOURCES.join(', '), 'o-err');
+      }
+      this.out(pane, '── ' + rest[1] + ' (' + src + ', last ' + n + ') ──', 'o-dim');
+      target.lines.slice(-n).forEach(l => this.out(pane, '  ' + l.text, l.cls || 'o-dim'));
+      this.out(pane, '── end ──  (a CLI read does not mark the agent seen)', 'o-dim');
+      return;
+    }
+
+    if (verb === 'send-keys') {
+      const target = e.resolve(rest[1]);
+      if (!target || !target.agent) return this.out(pane, 'herdr: no agent at ' + rest[1], 'o-err');
+      const key = rest[2];
+      const OK = ['esc', 'enter', 'tab', 'up', 'down', 'left', 'right', 'ctrl+c', 'ctrl+d', 'y', 'n'];
+      if (!key || OK.indexOf(key) < 0) {
+        return this.out(pane, 'herdr: unknown key "' + (key || '') + '" — keys are validated before any bytes are written', 'o-err');
+      }
+      if (target.pending && (key === 'y' || key === 'n')) e.answerAgent(target, key);
+      else if (key === 'ctrl+c') e.stopAgent(target);
+      return this.out(pane, 'sent ' + key + ' to ' + rest[1], 'o-ok');
+    }
+
     if (verb === 'rename') {
       const target = e.resolve(rest[1]);
       if (!target || !target.agent) return this.out(pane, 'herdr: no agent at ' + rest[1], 'o-err');
@@ -572,7 +774,7 @@
       const r = e.stopAgent(target);
       return this.out(pane, r.err || 'stopped', r.err ? 'o-err' : 'o-ok');
     }
-    this.out(pane, 'herdr agent <list|start|prompt|wait|rename|explain|attach|stop>', 'o-dim');
+    this.out(pane, 'herdr agent <list|start|prompt|wait|get|read|send-keys|rename|explain|attach|stop>', 'o-dim');
   };
 
   /* ---------- session / server / api ---------- */

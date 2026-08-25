@@ -49,7 +49,6 @@
     this.mode = 'terminal';           // terminal | prefix | navigate
     this.workspaces = [];
     this.wsSeq = 0;
-    this.tabSeq = 0;
     this.paneSeq = 0;
     this.activeWs = null;
     this.startedAt = Date.now();
@@ -161,8 +160,12 @@
   Engine.prototype.createTab = function (ws, opts) {
     ws = ws || this.activeWorkspace();
     opts = opts || {};
-    this.tabSeq += 1;
-    const tab = { id: 't' + this.tabSeq, name: opts.name || ('tab' + (ws.tabs.length + 1)), panes: [], layout: null, activePane: null };
+    ws.tabSeq = (ws.tabSeq || 0) + 1;
+    const tab = {
+      id: ws.id + ':t' + ws.tabSeq,          // public ids are workspace-qualified
+      name: opts.name || ('tab' + (ws.tabs.length + 1)),
+      panes: [], layout: null, activePane: null
+    };
     const pane = this.newPane(ws, tab, opts.cwd || ws.cwd);
     tab.layout = { t: 'p', gid: pane.gid };
     tab.activePane = pane.gid;
@@ -234,7 +237,10 @@
     return pane;
   };
 
-  Engine.prototype.split = function (target, direction) {
+  /* opts: { focus: false } leaves the user where they are (`--no-focus`),
+            { cwd } starts the new pane somewhere other than the caller's dir */
+  Engine.prototype.split = function (target, direction, opts) {
+    opts = opts || {};
     const pane = this.resolve(target);
     if (!pane) return { err: 'no such pane: ' + target };
     const loc = this.tabOfPane(pane);
@@ -242,7 +248,7 @@
     const ws = loc.ws, tab = loc.tab;
     if (tab.panes.length >= 6) return { err: 'pane limit reached in this tab (6)' };
 
-    const fresh = this.newPane(ws, tab, pane.cwd);
+    const fresh = this.newPane(ws, tab, opts.cwd || pane.cwd);
     const dirNode = (direction === 'down' || direction === 'below') ? 'col' : 'row';
 
     const replace = (node) => {
@@ -255,8 +261,12 @@
       return node;
     };
     tab.layout = replace(tab.layout);
-    tab.activePane = fresh.gid;
-    this.emit('pane.split', { from: pane.gid, pane: fresh, direction: dirNode === 'col' ? 'down' : 'right', ws: ws, tab: tab });
+    const focus = opts.focus !== false;
+    if (focus) tab.activePane = fresh.gid;
+    this.emit('pane.split', {
+      from: pane.gid, pane: fresh, ws: ws, tab: tab, focus: focus,
+      direction: dirNode === 'col' ? 'down' : 'right'
+    });
     return { ok: true, pane: fresh };
   };
 
@@ -338,6 +348,19 @@
     return { ok: true };
   };
 
+  /* Herdr injects the caller's context into each managed pane, and the agent
+     skill checks HERDR_ENV before touching anything. */
+  Engine.prototype.paneEnv = function (pane) {
+    const loc = this.tabOfPane(pane);
+    return {
+      HERDR_ENV: '1',
+      HERDR_SESSION: this.sessionName,
+      HERDR_WORKSPACE_ID: pane.wsId,
+      HERDR_TAB_ID: loc ? loc.tab.id : '',
+      HERDR_PANE_ID: pane.gid
+    };
+  };
+
   /* ---------------- pane output ---------------- */
   Engine.prototype.write = function (pane, text, cls) {
     pane.lines.push({ text: text == null ? '' : String(text), cls: cls || '' });
@@ -350,11 +373,21 @@
   };
 
   /* ---------------- agents ---------------- */
+  const AGENT_NAME = /^[a-z][a-z0-9_-]{0,31}$/;
+
   Engine.prototype.startAgent = function (pane, kindKey, opts) {
     opts = opts || {};
     const kind = AGENT_KINDS[kindKey];
-    if (!kind) return { err: 'unknown agent: ' + kindKey };
+    if (!kind) return { err: 'unknown agent kind: ' + kindKey };
     if (pane.agent) return { err: 'pane already runs ' + pane.agent.label };
+    if (opts.name) {
+      if (!AGENT_NAME.test(opts.name)) {
+        return { err: 'invalid agent name: names match [a-z][a-z0-9_-]{0,31}' };
+      }
+      if (this.agents().some(a => a.agent.name === opts.name)) {
+        return { err: 'agent name already in use: ' + opts.name };
+      }
+    }
 
     pane.agent = {
       kind: kindKey,

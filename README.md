@@ -4,7 +4,7 @@
 
 # Herdr101
 
-**Learn [Herdr](https://herdr.dev) by doing.** Twelve ordered lessons and quizzes beside a
+**Learn [Herdr](https://herdr.dev) by doing.** Thirteen ordered lessons and quizzes beside a
 working Herdr terminal simulator that checks your work.
 
 [**herdr101.run**](https://herdr101.run) · [Report an issue](https://github.com/M0H4M3D-D3V/herdr101/issues) · [MIT licensed](LICENSE)
@@ -19,6 +19,11 @@ working Herdr terminal simulator that checks your work.
 > of its respective owners.
 
 ---
+
+> [!NOTE]
+> Content tracks **Herdr v0.8.2** (released 2026-08-19) and the docs at
+> [herdr.dev/docs](https://herdr.dev/docs/). The simulator itself models no specific
+> build — it teaches documented behaviour, not a particular binary.
 
 ## What it is
 
@@ -42,9 +47,9 @@ Everything runs in the browser. No install, no server, no account, nothing to co
 | Workspaces and projects | A workspace per project · Navigate mode |
 | Agents | Running your first agent · Detection, labels and custom state |
 | Staying alive | Detach, reattach, survive · Named sessions |
-| Automation | Driving Herdr from a script · Configuration and plugins |
+| Automation | Driving Herdr from a script · Configuration and plugins · Let the agent drive Herdr |
 
-**12 lessons · 41 self-verifying tasks · 45 quiz questions.** Progress is saved in your browser.
+**13 lessons · 47 self-verifying tasks · 50 quiz questions.** Progress is saved in your browser.
 
 ## The simulator
 
@@ -110,7 +115,7 @@ assets/
   js/shell.js           shell built-ins and the herdr CLI
   js/sim.js             the client: sidebar, tabs, pane grid, modes, mouse
   js/tour.js            first-run offer and the guided walkthrough
-  js/curriculum.js      the twelve lessons, tasks and quizzes
+  js/curriculum.js      the thirteen lessons, tasks and quizzes
   js/app.js             lesson rendering, progress, quizzes, task checking
   img/                  link-preview image and icons
 build.js                single-file bundler
